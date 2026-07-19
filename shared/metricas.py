@@ -73,14 +73,15 @@ def correr_pytest(proyecto_dir: Path, python_bin: str = "python") -> dict:
         "tests_failed": int(m_failed.group(1)) if m_failed else 0,
         "tests_error": int(m_error.group(1)) if m_error else 0,
         "tiempo_segundos": tiempo,
-        "salida_cruda": salida[-3000:],  # ultimos 3000 chars por si hay que depurar
+        "salida_cruda": salida[-3000:],
     }
 
 
 def correr_mutmut(proyecto_dir: Path, python_bin: str = "python", timeout: int = 600) -> dict:
     """
     Corre mutmut run + mutmut results sobre el proyecto copiado.
-    Parsea el resumen final (killed, survived, timeout, etc).
+    Cuenta killed/survived/timeout/suspicious/no-tests linea por linea
+    (mas confiable que parsear la linea resumen con emojis).
     """
     cache = proyecto_dir / ".mutmut-cache"
     if cache.exists():
@@ -90,7 +91,7 @@ def correr_mutmut(proyecto_dir: Path, python_bin: str = "python", timeout: int =
         shutil.rmtree(mutants_dir)
 
     inicio = time.perf_counter()
-    resultado_run = subprocess.run(
+    subprocess.run(
         [python_bin, "-m", "mutmut", "run"],
         cwd=proyecto_dir,
         capture_output=True,
@@ -99,33 +100,26 @@ def correr_mutmut(proyecto_dir: Path, python_bin: str = "python", timeout: int =
     )
     tiempo = round(time.perf_counter() - inicio, 3)
 
-    salida = resultado_run.stdout + resultado_run.stderr
-
-    # Busca la linea resumen tipo: "105/105  🎉 93 🫥 1  ⏰ 0  🤔 0  🙁 11  🔇 0  🧙 0"
-    patron = re.search(
-        r"(\d+)/(\d+)\s+.*?(\d+)\s+.*?(\d+)\s+.*?(\d+)\s+.*?(\d+)\s+.*?(\d+)\s+.*?(\d+)\s+.*?(\d+)",
-        salida,
-    )
-
-    killed = survived = no_cubiertos = timeouts = suspicious = 0
-    if patron:
-        total = int(patron.group(2))
-        killed = int(patron.group(3))
-        no_cubiertos = int(patron.group(4))
-        timeouts = int(patron.group(5))
-        suspicious = int(patron.group(7))
-    else:
-        total = 0
-
     resultado_results = subprocess.run(
-        [python_bin, "-m", "mutmut", "results"],
+        [python_bin, "-m", "mutmut", "results", "--all", "true"],
         cwd=proyecto_dir,
         capture_output=True,
         text=True,
         timeout=60,
     )
     salida_results = resultado_results.stdout
-    survived = len(re.findall(r": survived", salida_results))
+
+    lineas_mutantes = [
+        linea.strip() for linea in salida_results.splitlines()
+        if ": " in linea and not linea.strip().startswith(("mutmut", "UserWarning", "warnings.warn"))
+    ]
+
+    killed = sum(1 for l in lineas_mutantes if l.endswith(": killed"))
+    survived = sum(1 for l in lineas_mutantes if l.endswith(": survived"))
+    timeouts = sum(1 for l in lineas_mutantes if l.endswith(": timeout"))
+    suspicious = sum(1 for l in lineas_mutantes if l.endswith(": suspicious"))
+    no_cubiertos = sum(1 for l in lineas_mutantes if l.endswith(": no tests"))
+    total = len(lineas_mutantes)
 
     mutation_score = round(killed / (killed + survived) * 100, 2) if (killed + survived) > 0 else 0.0
 
@@ -142,3 +136,24 @@ def correr_mutmut(proyecto_dir: Path, python_bin: str = "python", timeout: int =
             linea.strip() for linea in salida_results.splitlines() if ": survived" in linea
         ],
     }
+
+
+def obtener_diff_mutante(proyecto_dir: Path, nombre_mutante: str, python_bin: str = "python") -> str:
+    """
+    Obtiene el diff exacto de un mutante especifico usando 'mutmut show'.
+    nombre_mutante es el identificador que aparece en 'mutmut results',
+    ej: 'services.x_crear_tarea__mutmut_5'
+    """
+    import re as _re
+
+    resultado = subprocess.run(
+        [python_bin, "-m", "mutmut", "show", nombre_mutante],
+        cwd=proyecto_dir,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    salida = resultado.stdout + resultado.stderr
+    # limpia posibles codigos de color ANSI
+    salida_limpia = _re.sub(r"\x1b\[[0-9;]*m", "", salida)
+    return salida_limpia.strip()

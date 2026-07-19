@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Bases de datos SQLite generadas al correr
+*.db
+
+# mutmut
+.mutmut-cache
+mutants/
+
+# Entornos virtuales (por si acaso)
+venv/
+.venv/
+
+# Copias temporales que generan las estrategias al correr
+resultados/*_estrategia1/
+resultados/*_estrategia2/
+resultados/*_estrategia3/
