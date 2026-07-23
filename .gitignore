@@ -16,6 +16,4 @@ venv/
 .venv/
 
 # Copias temporales que generan las estrategias al correr
-resultados/*_estrategia1/
-resultados/*_estrategia2/
-resultados/*_estrategia3/
+resultados/*

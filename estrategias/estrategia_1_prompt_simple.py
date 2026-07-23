@@ -25,7 +25,14 @@ Requisitos:
   conectada a una base de datos SQLite en memoria ya inicializada.
 - NO expliques nada fuera del codigo. Responde SOLO con un bloque de codigo
   Python que empiece con los imports necesarios.
-- El archivo debe poder ejecutarse tal cual con `pytest`.
+- El archivo debe poder ejecutarse tal cual con pytest.
+- IMPORTANTE: Debes importar las funciones, clases y modelos directamente
+  desde el modulo original usando "from {nombre_archivo_sin_ext} import ...".
+  NUNCA redefinas, copies, reimplementes, ni hagas monkeypatching de
+  sys.modules para el codigo fuente, los modelos SQLAlchemy, ni los
+  schemas Pydantic dentro del archivo de test. El archivo de test debe
+  depender del modulo real para que las pruebas reflejen fielmente su
+  comportamiento.
 
 Codigo a probar (archivo: {nombre_archivo}):
 
@@ -36,8 +43,10 @@ Codigo a probar (archivo: {nombre_archivo}):
 
 
 def generar_tests_estrategia_1(codigo_fuente: str, nombre_archivo: str) -> dict:
+    nombre_modulo = nombre_archivo.replace(".py", "")
     prompt = PROMPT_TEMPLATE.format(
-        nombre_archivo=nombre_archivo, codigo_fuente=codigo_fuente
+        nombre_archivo=nombre_archivo, codigo_fuente=codigo_fuente,
+        nombre_archivo_sin_ext=nombre_modulo
     )
     resultado_llm = generar_texto(prompt)
     codigo_test = extraer_codigo_python(resultado_llm["texto"])

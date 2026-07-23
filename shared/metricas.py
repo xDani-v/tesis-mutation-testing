@@ -111,7 +111,9 @@ def correr_mutmut(proyecto_dir: Path, python_bin: str = "python", timeout: int =
 
     lineas_mutantes = [
         linea.strip() for linea in salida_results.splitlines()
-        if ": " in linea and not linea.strip().startswith(("mutmut", "UserWarning", "warnings.warn"))
+        if ": " in linea
+        and not linea.strip().startswith(("mutmut", "UserWarning", "warnings.warn"))
+        and linea.strip().startswith("services.")
     ]
 
     killed = sum(1 for l in lineas_mutantes if l.endswith(": killed"))

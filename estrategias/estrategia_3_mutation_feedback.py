@@ -43,6 +43,13 @@ Tu tarea:
 - Modifica o agrega pruebas para que detecten estos cambios especificos
   (es decir, que fallen si el codigo tuviera ese defecto).
 - Mantén todas las pruebas existentes que ya funcionan, no las elimines.
+- NUNCA redefinas, copies, reimplementes, ni hagas monkeypatching de
+  sys.modules para el codigo fuente, los modelos SQLAlchemy, ni los
+  schemas Pydantic. Sigue importando todo directamente del modulo real.
+- Evita el uso de mocks/monkeypatch sobre metodos internos de SQLAlchemy
+  (como Session.query o Session.filter) salvo que sea estrictamente
+  necesario; prefiere pruebas que usen la base de datos real en memoria
+  y verifiquen el comportamiento observable de la funcion.
 - Responde SOLO con el archivo de test COMPLETO y actualizado, sin
   explicaciones fuera del codigo.
 """
